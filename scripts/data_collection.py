@@ -9,6 +9,8 @@ The module provides two public methods:
 
 import requests
 import datetime
+from dateutil import parser
+import json
 
 # Define a list of month names
 __month_names = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
@@ -27,6 +29,12 @@ def __save_page(url, file_name):
         return "Page downloaded successfully."
     else:
         return f"Error downloading page. Status code: {response.status_code}"
+
+def __calc_temp_min():
+    return 0
+
+def __calc_temp_max():
+    return 0
 
 def save_by_date(date):
     # Download ISW report from given date as datetime.datetime object
@@ -76,3 +84,57 @@ def save_all():
     # Iterate over the dates from the start date to the end date
     for date in (start_date + datetime.timedelta(n) for n in range((end_date - start_date).days)):
         save_by_date(date)
+
+
+
+def get_weather(location):
+    url = "http://3.127.248.223:8000/content/api/v1/integration/weather-forecast"
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "token": "123",
+        "requester_name": "Taras Myroniuk",
+        "location": "Kyiv"
+    }
+
+    response = requests.post(url, headers=headers, json=data)
+
+    print(response.status_code)
+    print(response.json())
+
+    weather_json = json.loads(response.text)
+    print(weather_json)
+    """weather_dict = {
+    "day_tempmin": __calc_temp_min(),
+    "day_tempmax": __calc_temp_max(),
+    "day_temp": ,
+    "day_dew": ,
+    "day_humidity": ,
+    "day_precip": ,
+    "day_precipcover": ,
+    "day_solarradiation": ,
+    "day_solarenergy": ,
+    "day_uvindex": ,
+    "day_sunrise": ,
+    "day_sunset": ,
+    "day_moonphase": ,
+    "hour_datetime": ,
+    "hour_temp": ,
+    "hour_humidity": ,
+    "hour_dew": ,
+    "hour_precip": ,
+    "hour_precipprob": ,
+    "hour_snow": ,
+    "hour_snowdepth": ,
+    "hour_preciptype": ,
+    "hour_windgust": ,
+    "hour_windspeed": ,
+    "hour_winddir": ,
+    "hour_pressure": ,
+    "hour_visibility": ,
+    "hour_cloudcover": ,
+    "hour_solarradiation": ,
+    "hour_solarenergy": ,
+    "hour_uvindex": ,
+    "hour_severerisk": ,
+    "hour_conditions": }"""
+

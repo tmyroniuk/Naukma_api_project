@@ -6,28 +6,16 @@ This module provides methods for data preprocessing, including
 - get_report_tfidf_vector(lemm)
 """
 
-import os
 import re
-import string
-import copy
-import math
-import glob
 import pickle
-import datetime
-import calendar
 
 import pandas as pd
 import numpy as np
 
-from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer, TfidfTransformer
-from sklearn.pipeline import Pipeline
-
-import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer
 from nltk.stem import WordNetLemmatizer
-from collections import Counter
 
 from num2words import num2words
 
@@ -236,6 +224,5 @@ def get_report_tfidf_vector(lemm):
 
     # transform tfidf matrix to sparse dataframe
     df_tfidf_vector = pd.DataFrame.sparse.from_spmatrix(tfidf_vector, columns=cv.get_feature_names_out())
-    df_tfidf_vector.sample(1)
 
     return df_tfidf_vector

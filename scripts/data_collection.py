@@ -9,8 +9,7 @@ The module provides two public methods:
 
 import requests
 import datetime
-from dateutil import parser
-import json
+import os
 
 # Define a list of month names
 __month_names = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
@@ -30,12 +29,6 @@ def __save_page(url, file_name):
     else:
         return f"Error downloading page. Status code: {response.status_code}"
 
-def __calc_temp_min():
-    return 0
-
-def __calc_temp_max():
-    return 0
-
 def save_by_date(date):
     # Download ISW report from given date as datetime.datetime object
 
@@ -43,7 +36,11 @@ def save_by_date(date):
     month_name = __month_names[date.month - 1]
     day = int(date.strftime("%d"))
     name = date.strftime("%Y-%m-%d")
-    # Print the date in the format "Month Day, Year" str(int(s))
+
+    print(name)
+    if os.path.exists(f"./Reports/{name}"):
+        return "Page allready downloaded."
+
     if date.strftime("%Y")== "2022":
         if date == datetime.date(2022, 5, 5):
             url = "https://www.understandingwar.org/backgrounder/russian-campaign-assessment-may-5"
@@ -85,56 +82,4 @@ def save_all():
     for date in (start_date + datetime.timedelta(n) for n in range((end_date - start_date).days)):
         save_by_date(date)
 
-
-
-def get_weather(location):
-    url = "http://3.127.248.223:8000/content/api/v1/integration/weather-forecast"
-    headers = {"Content-Type": "application/json"}
-    data = {
-        "token": "123",
-        "requester_name": "Taras Myroniuk",
-        "location": "Kyiv"
-    }
-
-    response = requests.post(url, headers=headers, json=data)
-
-    print(response.status_code)
-    print(response.json())
-
-    weather_json = json.loads(response.text)
-    print(weather_json)
-    """weather_dict = {
-    "day_tempmin": __calc_temp_min(),
-    "day_tempmax": __calc_temp_max(),
-    "day_temp": ,
-    "day_dew": ,
-    "day_humidity": ,
-    "day_precip": ,
-    "day_precipcover": ,
-    "day_solarradiation": ,
-    "day_solarenergy": ,
-    "day_uvindex": ,
-    "day_sunrise": ,
-    "day_sunset": ,
-    "day_moonphase": ,
-    "hour_datetime": ,
-    "hour_temp": ,
-    "hour_humidity": ,
-    "hour_dew": ,
-    "hour_precip": ,
-    "hour_precipprob": ,
-    "hour_snow": ,
-    "hour_snowdepth": ,
-    "hour_preciptype": ,
-    "hour_windgust": ,
-    "hour_windspeed": ,
-    "hour_winddir": ,
-    "hour_pressure": ,
-    "hour_visibility": ,
-    "hour_cloudcover": ,
-    "hour_solarradiation": ,
-    "hour_solarenergy": ,
-    "hour_uvindex": ,
-    "hour_severerisk": ,
-    "hour_conditions": }"""
 

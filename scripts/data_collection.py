@@ -1,0 +1,140 @@
+"""
+This module purpose is downloading ISW reports and saving them into Reports folder
+The module provides two public methods:
+
+- save_by_date(date)
+
+- save_all()
+"""
+
+import requests
+import datetime
+from dateutil import parser
+import json
+
+# Define a list of month names
+__month_names = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
+
+def __save_page(url, file_name):
+    # Downloads html page by given url and saves as file_name
+
+    # Send a GET request to the URL and retrieve the response
+    response = requests.get(url)
+
+    # Check if the request was successful
+    if response.status_code == 200:
+        # Save the response content to a file
+        with open(f"{file_name}.html", "wb") as f:
+            f.write(response.content)
+        return "Page downloaded successfully."
+    else:
+        return f"Error downloading page. Status code: {response.status_code}"
+
+def __calc_temp_min():
+    return 0
+
+def __calc_temp_max():
+    return 0
+
+def save_by_date(date):
+    # Download ISW report from given date as datetime.datetime object
+
+    # Parse month and day
+    month_name = __month_names[date.month - 1]
+    day = int(date.strftime("%d"))
+    name = date.strftime("%Y-%m-%d")
+    # Print the date in the format "Month Day, Year" str(int(s))
+    if date.strftime("%Y")== "2022":
+        if date == datetime.date(2022, 5, 5):
+            url = "https://www.understandingwar.org/backgrounder/russian-campaign-assessment-may-5"
+        elif date == datetime.date(2022, 7, 11):
+            url = "https://www.understandingwar.org/backgrounder/russian-offensive-campaign-update-july-11"
+        elif date == datetime.date(2022, 8, 12):
+            url = "https://www.understandingwar.org/backgrounder/russian-offensive-campaign-assessment-august-12-0"
+        elif date > datetime.date(2022, 2, 28):
+            url = ("https://www.understandingwar.org/backgrounder/russian-offensive-campaign-assessment-%s-%d"%(month_name, day))
+        elif date == datetime.date(2022, 2, 24):
+            url = "https://www.understandingwar.org/backgrounder/russia-ukraine-warning-update-initial-russian-offensive-campaign-assessment"
+        elif date == datetime.date(2022, 2, 25):
+            url = "https://www.understandingwar.org/backgrounder/russia-ukraine-warning-update-russian-offensive-campaign-assessment-february-25-2022"
+        elif date == datetime.date(2022, 2, 28):
+            url = "https://www.understandingwar.org/backgrounder/russian-offensive-campaign-assessment-february-28-2022"
+        else:
+            url = ("https://www.understandingwar.org/backgrounder/russia-ukraine-warning-update-russian-offensive-campaign-assessment-%s-%d"%(month_name, day))
+    else:
+        if date == datetime.date(2023, 2, 5):
+            url = "https://www.understandingwar.org/backgrounder/russian-offensive-campaign-update-february-5-2023"
+        else:
+            year = date.strftime("%Y")
+            url = ("https://www.understandingwar.org/backgrounder/russian-offensive-campaign-assessment-%s-%d-%s"%(month_name, day, year))
+    return __save_page(url, f"Reports/{name}")
+
+def save_all():
+    # Downloads all ISW reports from Feb 22 2022 till today
+
+    # Set the start date to February 24, 2022
+    start_date = datetime.date(2022, 2, 24)
+
+    # Get the current date
+    end_date = datetime.date.today()
+
+    # Define a list of month names
+    month_names = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
+
+    # Iterate over the dates from the start date to the end date
+    for date in (start_date + datetime.timedelta(n) for n in range((end_date - start_date).days)):
+        save_by_date(date)
+
+
+
+def get_weather(location):
+    url = "http://3.127.248.223:8000/content/api/v1/integration/weather-forecast"
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "token": "123",
+        "requester_name": "Taras Myroniuk",
+        "location": "Kyiv"
+    }
+
+    response = requests.post(url, headers=headers, json=data)
+
+    print(response.status_code)
+    print(response.json())
+
+    weather_json = json.loads(response.text)
+    print(weather_json)
+    """weather_dict = {
+    "day_tempmin": __calc_temp_min(),
+    "day_tempmax": __calc_temp_max(),
+    "day_temp": ,
+    "day_dew": ,
+    "day_humidity": ,
+    "day_precip": ,
+    "day_precipcover": ,
+    "day_solarradiation": ,
+    "day_solarenergy": ,
+    "day_uvindex": ,
+    "day_sunrise": ,
+    "day_sunset": ,
+    "day_moonphase": ,
+    "hour_datetime": ,
+    "hour_temp": ,
+    "hour_humidity": ,
+    "hour_dew": ,
+    "hour_precip": ,
+    "hour_precipprob": ,
+    "hour_snow": ,
+    "hour_snowdepth": ,
+    "hour_preciptype": ,
+    "hour_windgust": ,
+    "hour_windspeed": ,
+    "hour_winddir": ,
+    "hour_pressure": ,
+    "hour_visibility": ,
+    "hour_cloudcover": ,
+    "hour_solarradiation": ,
+    "hour_solarenergy": ,
+    "hour_uvindex": ,
+    "hour_severerisk": ,
+    "hour_conditions": }"""
+

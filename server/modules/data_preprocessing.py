@@ -155,7 +155,7 @@ def __is_date_suitable(datetime: str, tzoffset: float, time_span: int):
     # Checks if given date is withing timespan from now using tz hour offset value
     utc_datetime = pytz.utc.localize(parser.parse(datetime))
     now = dt.datetime.now(pytz.utc) + dt.timedelta(hours=tzoffset)
-    return now - dt.timedelta(hours=1) < utc_datetime <= now + dt.timedelta(hours=time_span-1)
+    return now < utc_datetime < now + dt.timedelta(hours=time_span + 1)
 
 def __prepare_forecast_data(weather_json, time_span: int):
     # Creates N hours forecast from forecast API responce for given region

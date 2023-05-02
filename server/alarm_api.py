@@ -6,8 +6,8 @@ import requests
 from dateutil import parser
 from flask import Flask, jsonify, request
 
-MY_API_TOKEN=""
-from config import PREDICTIONS_FILE, REGIONS_DATASET
+from config import PREDICTIONS_FILE, REGIONS_DATASET, MY_API_TOKEN
+import generate_predictions_script
 
 app = Flask(__name__)
 
@@ -79,7 +79,7 @@ def get_alarms_for_regions(region_ids, regions_df, predict_df):
         df_region = predict_df[predict_df['region_id'] == reg_id]
         time_forecast = {}
         for index, row in df_region.iterrows():
-            time = row['date_time'].strftime('%H:%M')
+            time = row['date_time'].strftime('%Y-%m-%d %H:%M')
             time_forecast[time] = row['alarm_marker']
 
         all_regions_forecast[get_reg_name(reg_id, regions_df)] = time_forecast
@@ -114,5 +114,5 @@ def load_forecast_endpoint():
     methods=["POST"],
 )
 def relaunch_forecast_endpoint():
-    #TODO:code for relaunching forecast script
-    print("Relaunch service")
+    generate_predictions_script.main()
+    return "Forecast regenerated sucessfully"

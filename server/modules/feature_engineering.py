@@ -4,10 +4,13 @@ This module provides methods used for creating new features
 
 import datetime as dt
 import pandas as pd
+import numpy as np
 import pytz
 
 from dateutil import parser
-from modules.data_collection import load_history, load_alerts
+
+from modules.data_collection import load_history, load_alerts, load_states
+from config import *
 
 def __isNaN(num):
     return num != num
@@ -26,10 +29,13 @@ def __load_history(region_id: int):
         __history_cache[region_id] = region_history
         return region_history
 
+# Resets cache for region alarms history
+def reset_cache():
+    __history_cache = {}
+
 def event_holiday_is_near(holiday_df, row):
     datetime = parser.parse(f"{row['day_datetime']} {row['hour_datetime']}")
-    closest_holiday = holiday_df.index[holiday_df.index.get_loc(datetime, method='nearest')]
-    value = abs(pd.Timedelta(datetime - closest_holiday).days) <= 3
+    value = (np.abs((holiday_df['date'] - datetime) / np.timedelta64(1, 'h')) <= 3).any()
     return 1.0 if value and not __isNaN(value) else 0.0
 
 def calc_region_alarms_history(region_name: str, states_list: list, datetime_now):
@@ -69,6 +75,14 @@ def calc_region_alarms_history(region_name: str, states_list: list, datetime_now
 def calc_simultaneous_alarms():
     return float(len(load_alerts()))
 
-# Resets cache for region alarms history
-def reset_cache():
-    __history_cache = {}
+def generate_features_dumb(df):
+    # Num of separate alarms in past 24 hours
+
+    # Load state regions metadata from alerts API
+    states = load_states()
+    # Clear cache if any
+    reset_cache()
+    df[['event_alarms_past_24', 'event_hours_from_last_alarm']] = df.apply(lambda row: calc_region_alarms_history(row['region'], states, row['date_time']), axis=1)
+    # Num of state regions with alarms at the moment
+    df['event_simultaneous_alarms'] = calc_simultaneous_alarms()
+    return df

@@ -159,5 +159,3 @@ def load_weather(location: str, contentType: str = "json"):
     response = requests.request("GET", url, headers=headers, data=payload)
     return json.loads(response.text)
 
-print(load_states())
-

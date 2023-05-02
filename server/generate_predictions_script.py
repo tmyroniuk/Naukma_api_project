@@ -10,7 +10,7 @@ from dateutil import parser
 from config import *
 from modules.data_collection import save_by_date, load_states
 from modules.data_preprocessing import get_report_tfidf_vector, get_weather_forecast_df
-from modules.feature_engineering import *
+from modules.feature_engineering import generate_features_dumb, event_holiday_is_near
 
 def isNaN(num):
     return num != num
@@ -29,7 +29,7 @@ def get_prediction(df, model):
     # Generate predictions
 
     # Normalize
-    scaler = pickle.load(open('model/scaler_v1.pkl', 'rb'))
+    scaler = pickle.load(open(f'./{MODEL_FOLDER}/{scaler_model}_{scaler_version}.pkl', 'rb'))
     # Separate float values
     df_float_values = df[scaler.get_feature_names_out()]
     if df_float_values.to_numpy().ndim < 2:
@@ -42,20 +42,8 @@ def get_prediction(df, model):
     prediction = model.predict(df_float_values_scaled)
     return prediction
 
-def generate_features_dumb(df):
-    # Num of separate alarms in past 24 hours
-
-    # Load state regions metadata from alerts API
-    states = load_states()
-    # Clear cache if any
-    reset_cache()
-    df[['event_alarms_past_24', 'event_hours_from_last_alarm']] = df.apply(lambda row: calc_region_alarms_history(row['region'], states, row['date_time']), axis=1)
-    # Num of state regions with alarms at the moment
-    df['event_simultaneous_alarms'] = calc_simultaneous_alarms()
-    return df
-
 def generate_features_smart(df, model):
-    # Generates features based on model predictions for prevous days
+    # Generates features based on model predictions for prevous hours
 
     # Generate dumb features and prediction
     df = generate_features_dumb(df)
@@ -63,6 +51,7 @@ def generate_features_smart(df, model):
 
     # Create new column to account for predicted alarms
     df['event_alarms_past_24_modifier'] = 0
+    df['was_alarm'] = df['event_hours_from_last_alarm'].apply(lambda hours: hours < 1.0)
 
     # Recalculate features
     hours = forecast_hours
@@ -76,9 +65,11 @@ def generate_features_smart(df, model):
         for r in range(0, regions):
             df.loc[r * hours + h, 'event_alarms_past_24_modifier'] = df.loc[r * hours + h - 1, 'event_alarms_past_24_modifier'] + df.loc[r * hours + h - 1, 'alarm_marker']
             # Reset alarm cooldown timer if new alarm predicted
-            df.loc[r * hours + h, 'event_hours_from_last_alarm'] = df.loc[r * hours + h - 1, 'event_hours_from_last_alarm'] + 1 if df.loc[r * hours + h - 1, 'alarm_marker'] == 0 else 0.0
+            df.loc[r * hours + h, 'event_hours_from_last_alarm'] = 1.0 if df.loc[r * hours + h - 1, 'alarm_marker'] == 0 and df.loc[r * hours + h, 'was_alarm'] else df.loc[r * hours + h - 1, 'event_hours_from_last_alarm'] + 1
             # Calculate num of predicted simultanious alarms
             marker_sum += df.loc[r * hours + h - 1, 'alarm_marker']
+            # Save prev continuous alarm info
+            df.loc[r * hours + h, 'was_alarm'] = df.loc[r * hours + h - 1, 'alarm_marker']
 
         # Iterate once more
         for r in range(0, regions):
@@ -88,19 +79,17 @@ def generate_features_smart(df, model):
             # Update prediction with updated features
             df.loc[r * hours + h, 'alarm_marker'] = get_prediction(df.iloc[r * hours + h].copy(), model)[0]
 
-    df = df.drop('event_alarms_past_24_modifier', axis=1)
+    df = df.drop(['event_alarms_past_24_modifier', 'was_alarm'], axis=1)
 
     return df
 
-if __name__ == '__main__':
+def main():
     # Load weather forecast for 12 hours
     df = get_weather_forecast_df(forecast_hours)
 
     # Custom made dataset with most "important" russian hollidays
     holiday_df = pd.read_csv(HOLIDAY_DATASET, sep=';')
     holiday_df['date'] = holiday_df['date'].apply(pd.to_datetime)
-    holiday_df = holiday_df.sort_values(by=['date'])
-    holiday_df = holiday_df.set_index('date')
 
     # Dedicated datetime column
     df['date_time'] = df.apply(lambda row: parser.parse(f"{row['day_datetime']}T{row['hour_datetime']}"), axis=1)
@@ -151,5 +140,9 @@ if __name__ == '__main__':
     df = generate_features_smart(df, model)
 
     # Save prediction to .csv
-    res = df[['date_time', 'region_id_int', 'alarm_marker']].copy()
+    res = pd.DataFrame()
+    res[['date_time', 'region_id', 'alarm_marker']] = df[['date_time', 'region_id_int', 'alarm_marker']].copy()
     res.to_csv(PREDICTIONS_FILE, sep=';')
+
+if __name__ == '__main__':
+    main()

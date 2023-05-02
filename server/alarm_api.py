@@ -7,8 +7,7 @@ from dateutil import parser
 from flask import Flask, jsonify, request
 
 MY_API_TOKEN=""
-FORECAST_FILE_NAME="./alarm_forecast.csv"
-REGIONS_FILE_NAME="./data/0_meta/regions.csv"
+from config import PREDICTIONS_FILE, REGIONS_DATASET
 
 app = Flask(__name__)
 
@@ -47,33 +46,33 @@ def verify_token(json_data):
 
     if token != MY_API_TOKEN:
         raise InvalidUsage("wrong API token", status_code=403)
-        
+
 def read_prediction_file():
-    df = pd.read_csv(FORECAST_FILE_NAME, sep=',')
+    df = pd.read_csv(PREDICTIONS_FILE, sep=';')
     df['date_time'] = df['date_time'].apply(pd.to_datetime)
     df['alarm_marker'] = df['alarm_marker'].astype('bool')
     return df
 
 def read_regions_file():
-    df = pd.read_csv(REGIONS_FILE_NAME, sep=',')
+    df = pd.read_csv(REGIONS_DATASET, sep=',')
     return df
 
 def get_region_id(region_name, regions_df):
     if((region_name == 'all') | (region_name == None)):
         print('all regions')
         return regions_df['region_id'].values
-    
+
     region_row = (regions_df[regions_df['region'] == region_name])
     if(region_row.empty):
         return [-1]
-    
+
     return [region_row['region_id'].iloc[0]]
 
 def get_reg_name(reg_id, regions_df):
     return (regions_df[regions_df['region_id'] == reg_id])['region'].iloc[0]
 
 def get_alarms_for_regions(region_ids, regions_df, predict_df):
-    
+
     all_regions_forecast = {}
     time_forecast = {}
     for reg_id in region_ids:
@@ -82,9 +81,9 @@ def get_alarms_for_regions(region_ids, regions_df, predict_df):
         for index, row in df_region.iterrows():
             time = row['date_time'].strftime('%H:%M')
             time_forecast[time] = row['alarm_marker']
-            
+
         all_regions_forecast[get_reg_name(reg_id, regions_df)] = time_forecast
-        
+
     return all_regions_forecast
 
 @app.route(

@@ -1,3 +1,7 @@
+"""
+DEPRECATED
+"""
+
 import datetime as dt
 from dateutil import parser
 import json

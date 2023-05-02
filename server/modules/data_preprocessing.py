@@ -1,17 +1,16 @@
 """
-This module provides methods for data preprocessing, including
-
-- get_report_lemm(report_file_path)
-
-- get_report_tfidf_vector(lemm)
+This module provides methods used for data preprocessing
 """
 
 import re
 import pickle
+import pytz
 
+import datetime as dt
 import pandas as pd
 import numpy as np
 
+from dateutil import parser
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer
@@ -21,36 +20,8 @@ from num2words import num2words
 
 from bs4 import BeautifulSoup
 
-MAX_DF = 0.98
-MIN_DF = 0.25
-
-REPORTS_FOLDER = "Reports"
-REPORTS_DATA_FOLDER = "data/2_isw_preprocessed"
-REPORTS_DATA_FILE = "all_days.csv"
-
-TFIDF_NUMBER = 100
-
-EVENTS_DATA_FOLDER = "data/1_events"
-EVENTS_DATA_FILE = "alarms.csv"
-
-WEATHER_DATA_FOLDER = "data/1_weather"
-WEATHER_DATA_FILE = "all_weather_by_hour_v2.csv"
-
-REGIONS_DATA_FOLDER = "data/0_meta"
-REGIONS_DATA_FILE = "regions.csv"
-
-MODEL_FOLDER = "model"
-
-OUTPUT_FOLDER = "data/4_all_data_preprocessed"
-ISW_OUTPUT_DATA_FILE = "all_isw.csv"
-WEATHER_EVENTS_OUTPUT_DATA_FILE = "all_hourly_weather_events_v2.csv"
-WEATHER_EVENTS_KEYWORDS_OUTPUT_DATA_FILE = "all_hourly_weather_events_isw_v2.csv"
-
-tfidf_transformer_model = "tfidf_transformer"
-count_vectorizer_model = "count_vectorizer"
-
-tfidf_transformer_version = "v4"
-count_vectorizer_version = "v4"
+from config import *
+from modules.data_collection import load_weather
 
 def __remove_one_letter_word(data):
     words = word_tokenize(str(data))
@@ -62,7 +33,6 @@ def __remove_one_letter_word(data):
 
 def __convert_lower_case(data):
       return np.char.lower(data)
-
 
 def __remove_stop_words(data):
     stop_words = set(stopwords.words('english'))
@@ -159,40 +129,7 @@ def __preprocess(data, word_root_algo="lemm"):
 
     return data
 
-def __create_bag_of_words(text):
-    """
-    Creates a bag of words (a dictionary of word frequencies) from a string.
-    """
-    # Split the text into words
-    words = text.split()
-
-    # Initialize an empty dictionary
-    bag_of_words = {}
-
-    # Loop over each word and count its frequency
-    for word in words:
-        if word in bag_of_words:
-            bag_of_words[word] += 1
-        else:
-            bag_of_words[word] = 1
-
-    return bag_of_words
-
-def __calculate_term_frequency(bag_of_words):
-
-    # Calculate the total number of words in the bag
-    total_words = sum(bag_of_words.values())
-
-    # Initialize an empty dictionary
-    term_frequency = {}
-
-    # Loop over each word in the bag and calculate its term frequency
-    for word, frequency in bag_of_words.items():
-        term_frequency[word] = frequency / total_words
-
-    return term_frequency
-
-def get_report_lemm(report_file_path):
+def __get_report_lemm(report_file_path):
     lemm = ''
     # Open the HTML file
     with open(report_file_path, encoding="utf8") as file:
@@ -214,11 +151,96 @@ def get_report_lemm(report_file_path):
 
     return lemm
 
-def get_report_tfidf_vector(lemm):
+def __is_date_suitable(datetime: str, tzoffset: float, time_span: int):
+    # Checks if given date is withing timespan from now using tz hour offset value
+    utc_datetime = pytz.utc.localize(parser.parse(datetime))
+    now = dt.datetime.now(pytz.utc) + dt.timedelta(hours=tzoffset)
+    return now - dt.timedelta(hours=1) < utc_datetime <= now + dt.timedelta(hours=time_span-1)
+
+def __prepare_forecast_data(weather_json, time_span: int):
+    # Creates N hours forecast from forecast API responce for given region
+    forecast = []
+    for day in weather_json["days"]:
+        for hour in day["hours"]:
+            hour_data = {}
+
+            # Check if date is within timeSpan
+            datetime = f"{day['datetime']} {hour['datetime']}"
+            if not __is_date_suitable(datetime, weather_json['tzoffset'], time_span):
+                continue
+
+            # Write nessesary data into the responce
+            hour_data["day_datetime"] = day["datetime"]
+            hour_data["day_tempmin"] = day["tempmin"]
+            hour_data["day_tempmax"] = day["tempmax"]
+            hour_data["day_temp"] = day["temp"]
+            hour_data["day_dew"] = day["dew"]
+            hour_data["day_humidity"] = day["humidity"]
+            hour_data["day_precip"] = day["precip"]
+            hour_data["day_precipcover"] = day["precipcover"]
+            hour_data["day_solarradiation"] = day["solarradiation"]
+            hour_data["day_solarenergy"] = day["solarenergy"]
+            hour_data["day_uvindex"] = day["uvindex"]
+            hour_data["day_sunrise"] = day["sunrise"]
+            hour_data["day_sunset"] = day["sunset"]
+            hour_data["day_moonphase"] = day["moonphase"]
+            hour_data["hour_datetime"] = hour["datetime"]
+            hour_data["hour_temp"] = hour["temp"]
+            hour_data["hour_humidity"] = hour["humidity"]
+            hour_data["hour_dew"] = hour["dew"]
+            hour_data["hour_precip"] = hour["precip"]
+            hour_data["hour_precipprob"] = hour["precipprob"]
+            hour_data["hour_snow"] = hour["snow"]
+            hour_data["hour_snowdepth"] = hour["snowdepth"]
+            hour_data["hour_preciptype"] = hour["preciptype"]
+            hour_data["hour_windgust"] = hour["windgust"]
+            hour_data["hour_windspeed"] = hour["windspeed"]
+            hour_data["hour_winddir"] = hour["winddir"]
+            hour_data["hour_pressure"] = hour["pressure"]
+            hour_data["hour_visibility"] = hour["visibility"]
+            hour_data["hour_cloudcover"] = hour["cloudcover"]
+            hour_data["hour_solarradiation"] = hour["solarradiation"]
+            hour_data["hour_solarenergy"] = hour["solarenergy"]
+            hour_data["hour_uvindex"] = hour["uvindex"]
+            hour_data["hour_severerisk"] = hour["severerisk"]
+            hour_data["hour_conditions"] = hour["conditions"]
+
+            forecast.append(hour_data)
+
+    return forecast
+
+def get_weather_forecast_df(time_span: int):
+    # Creates dataframe with forecast data for given number of hours
+    df = []
+    # Read regions DF
+    df_regions = pd.read_csv(REGIONS_DATASET, sep=',')
+
+    for index, row in df_regions.iterrows():
+        # Load forecast for each region
+        try:
+            weather = load_weather(row['center_city_en'])
+        except:
+            weather = load_weather(row['center_city_en'] + '(UA)')
+
+        # Parse forecast for next time_span hours
+        weather = __prepare_forecast_data(weather, time_span)
+        df_city = pd.DataFrame(weather)
+
+        # Add nessesary metadata
+        df_city['region_id'] = float(row['region_id'])
+        df_city['region'] = row['region']
+
+        df.append(df_city)
+    # Unite all loadl DFs in one DF
+    return pd.concat(df, axis=0, ignore_index=True)
+
+def get_report_tfidf_vector(report_file_path):
+    # Creates TF-IDF vector for given html of ISW report
+    lemm = __get_report_lemm(report_file_path)
     # Load TF-IDF
     tfidf = pickle.load(open(f"{MODEL_FOLDER}/{tfidf_transformer_model}_{tfidf_transformer_version}.pkl", "rb"))
     cv = pickle.load(open(f"{MODEL_FOLDER}/{count_vectorizer_model}_{count_vectorizer_version}.pkl", "rb"))
-
+    # Calculate TD-IDF matrix
     word_count_vector = cv.transform([lemm])
     tfidf_vector = tfidf.transform(word_count_vector)
 

@@ -1,15 +1,13 @@
 """
-This module purpose is downloading ISW reports and saving them into Reports folder
-The module provides two public methods:
-
-- save_by_date(date)
-
-- save_all()
+This module provides methods used for data colletion
 """
 
 import requests
+import json
 import datetime
 import os
+
+from config import WEATHER_API_KEY, ALERTS_API_KEY
 
 # Define a list of month names
 __month_names = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
@@ -82,4 +80,84 @@ def save_all():
     for date in (start_date + datetime.timedelta(n) for n in range((end_date - start_date).days)):
         save_by_date(date)
 
+
+def load_alerts(contentType: str = "application/json"):
+    # Loads list of active alerts in States
+
+    url_base_url = "https://api.ukrainealarm.com"
+    url_api = "api/v3"
+    url_endpoint = "alerts"
+    url_querry_params = ""
+
+    url = f"{url_base_url}/{url_api}/{url_endpoint}?{url_querry_params}"
+
+    payload = {}
+    headers = {
+        "Authorization": ALERTS_API_KEY,
+        "accept": contentType
+    }
+
+    response = requests.request("GET", url, headers=headers, data=payload)
+    alarms = [alarm['activeAlerts'] for alarm in json.loads(response.text) if alarm['regionType'] == 'State']
+    alarms = sum(alarms, [])
+    return [alarm for alarm in alarms if alarm['type'] == 'AIR']
+
+def load_history(regionId: int, contentType: str = "application/json"):
+    # Loads last 25 alerts in given region (uses alerts-api id system)
+
+    url_base_url = "https://api.ukrainealarm.com"
+    url_api = "api/v3"
+    url_endpoint = "alerts/regionHistory"
+    url_querry_params = f"regionId={regionId}"
+
+    url = f"{url_base_url}/{url_api}/{url_endpoint}?{url_querry_params}"
+
+    payload = {}
+    headers = {
+        "Authorization": ALERTS_API_KEY,
+        "accept": contentType
+    }
+
+    response = requests.request("GET", url, headers=headers, data=payload)
+    return [alarm for alarm in json.loads(response.text)[0]['alarms'] if alarm['alertType'] == "AIR"]
+
+def load_states(contentType: str = "application/json"):
+    # Loads info on all State regions including their names and ids
+
+    url_base_url = "https://api.ukrainealarm.com"
+    url_api = "api/v3"
+    url_endpoint = "regions"
+    url_querry_params = ""
+
+    url = f"{url_base_url}/{url_api}/{url_endpoint}?{url_querry_params}"
+
+    payload = {}
+    headers = {
+        "Authorization": ALERTS_API_KEY,
+        "accept": contentType
+    }
+
+    response = requests.request("GET", url, headers=headers, data=payload)
+    regions_dict = json.loads(response.text)
+    for state in regions_dict["states"]:
+        state.pop("regionChildIds")
+    return regions_dict['states']
+
+def load_weather(location: str, contentType: str = "json"):
+    # Loads weaher forecast for next 24 hours in given location
+
+    url_base_url = "https://weather.visualcrossing.com"
+    url_api = "VisualCrossingWebServices/rest/services/timeline"
+    url_endpoint = f"{location}/next24hours"
+    url_querry_params = f"unitGroup=metric&include=hours%2Cdays&key={WEATHER_API_KEY}&contentType={contentType}"
+
+    url = f"{url_base_url}/{url_api}/{url_endpoint}?{url_querry_params}"
+
+    payload = {}
+    headers = {"Authorization": WEATHER_API_KEY}
+
+    response = requests.request("GET", url, headers=headers, data=payload)
+    return json.loads(response.text)
+
+print(load_states())
 

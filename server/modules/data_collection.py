@@ -80,7 +80,6 @@ def save_all():
     for date in (start_date + datetime.timedelta(n) for n in range((end_date - start_date).days)):
         save_by_date(date)
 
-
 def load_alerts(contentType: str = "application/json"):
     # Loads list of active alerts in States
 
@@ -159,3 +158,18 @@ def load_weather(location: str, contentType: str = "json"):
     response = requests.request("GET", url, headers=headers, data=payload)
     return json.loads(response.text)
 
+def load_weather_at(location: str, date_time: datetime.datetime, contentType: str = "json"):
+    # Loads weaher forecast for next 24 hours in given location
+
+    url_base_url = "https://weather.visualcrossing.com"
+    url_api = "VisualCrossingWebServices/rest/services/timeline"
+    url_endpoint = f"{location}/{date_time.strftime('%Y-%m-%dT%H:%M:%S')}"
+    url_querry_params = f"unitGroup=metric&include=current&key={WEATHER_API_KEY}&contentType={contentType}"
+
+    url = f"{url_base_url}/{url_api}/{url_endpoint}?{url_querry_params}"
+
+    payload = {}
+    headers = {"Authorization": WEATHER_API_KEY}
+
+    response = requests.request("GET", url, headers=headers, data=payload)
+    return json.loads(response.text)

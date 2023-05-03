@@ -6,7 +6,7 @@ import requests
 from dateutil import parser
 from flask import Flask, jsonify, request
 
-from config import PREDICTIONS_FILE, REGIONS_DATASET, MY_API_TOKEN
+from config import PREDICTIONS_FILE, REGIONS_DATASET, MY_API_TOKEN, STATE_FILE
 import generate_predictions_script
 
 app = Flask(__name__)
@@ -71,6 +71,15 @@ def get_region_id(region_name, regions_df):
 def get_reg_name(reg_id, regions_df):
     return (regions_df[regions_df['region_id'] == reg_id])['region'].iloc[0]
 
+def get_status():
+    try:
+        with open(STATE_FILE, 'r') as handle:
+            return json.load(handle)
+    except:
+        return {
+            "last_prediciotn_time": ""
+        }
+
 def get_alarms_for_regions(region_ids, regions_df, predict_df):
 
     all_regions_forecast = {}
@@ -102,8 +111,13 @@ def load_forecast_endpoint():
             "Error": "The specified region is not supported"
         }
     else:
+        # Load forecast
         time_forecast = get_alarms_for_regions(region_ids, regions_df, predict_df)
+        # Load status
+        status = get_status()
+
         result_payload = {
+            'last_prediciotn_time': status['last_prediciotn_time'],
             'regions_forecast': time_forecast
         }
 

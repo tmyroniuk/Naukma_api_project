@@ -18,15 +18,19 @@ def __isNaN(num):
 __history_cache = {}
 
 def __load_history(region_id: int):
+    now = dt.datetime.now()
     # Load region alarms history
-    if region_id in __history_cache:
+    if region_id in __history_cache and now - __history_cache[region_id]['timeStamp'] < dt.timedelta(minutes=30):
         # Found in cache, extract cache
-        region_history = __history_cache[region_id]
+        region_history = __history_cache[region_id]['history']
         return region_history
     else:
         # History for this region hasn't been downloaded yet
         region_history = load_history(region_id)
-        __history_cache[region_id] = region_history
+        __history_cache[region_id] = {
+            'timeStamp': now,
+            'history': region_history
+        }
         return region_history
 
 # Resets cache for region alarms history
@@ -54,32 +58,56 @@ def calc_region_alarms_history(region_name: str, states_list: list, datetime_now
 
     # Calculate number of distinct alarms in past 24 hours
     for alarm in reversed(region_history):
+        alarm_start_date = tz.localize(parser.parse(alarm['startDate']))
+        if alarm_start_date > now:
+                continue
         if  alarm['isContinue']:
             alarm_count += 1
         else:
             alarm_end_date = tz.localize(parser.parse(alarm['endDate']))
             if alarm_end_date > now:
-                continue
-            if  alarm['isContinue'] or (now - alarm_end_date) < dt.timedelta(hours=24):
+                break
+            if  (now - alarm_end_date) < dt.timedelta(hours=24):
                 alarm_count += 1
             else:
                 break
     # Calculate hours from last alarm
-    last_air_alert = region_history[-1]
+    last_air_alert = next((alert for alert in reversed(region_history) if tz.localize(parser.parse(alert['startDate'])) <= now), None)
     if not last_air_alert['isContinue']:
         hours_from_last_alarm = (now - tz.localize(parser.parse(last_air_alert['endDate']))).total_seconds() / 3600
 
     return pd.Series([alarm_count, hours_from_last_alarm])
 
+def calc_region_if_alarm_at(region_name: str, states_list: list, date_time):
+    # Calculates whether the alarm was active at the time in the region
+
+    region_id = next((state for state in states_list if region_name in state['regionName']), None)['regionId']
+    region_id = int(region_id)
+    if region_id is None:
+        return None
+    # Get timezone and current time
+    tz = pytz.timezone('Europe/Kyiv')
+    date_time = tz.localize(date_time)
+
+    region_history = __load_history(region_id)
+
+    for alarm in reversed(region_history):
+        if tz.localize(parser.parse(alarm['startDate'])) <= date_time and(alarm['isContinue'] or date_time < tz.localize(parser.parse(alarm['endDate'])) + dt.timedelta(hours=1)):
+            return 1.0
+        elif tz.localize(parser.parse(alarm['startDate'])) > date_time + dt.timedelta(hours=1):
+            return 0.0
+    return 0.0
+
 # Returns number of alarms active now
 def calc_simultaneous_alarms():
     return float(len(load_alerts()))
 
-def generate_features_dumb(df):
+def generate_features_dumb(df, states = None):
     # Num of separate alarms in past 24 hours
 
     # Load state regions metadata from alerts API
-    states = load_states()
+    if states is None:
+        states = load_states()
     # Clear cache if any
     reset_cache()
     df[['event_alarms_past_24', 'event_hours_from_last_alarm']] = df.apply(lambda row: calc_region_alarms_history(row['region'], states, row['date_time']), axis=1)

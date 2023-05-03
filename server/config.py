@@ -5,6 +5,9 @@ MY_API_TOKEN=""
 
 forecast_hours = 12
 
+
+STATE_FILE = "./data/state.json"
+DATASET_FILE = "./data/4_all_data_preprocessed/all_features"
 PREDICTIONS_FILE = "./data/alarms_forecast.csv"
 HOLIDAY_DATASET = './data/1_holidays/holidays.csv'
 REGIONS_DATASET = './data/0_meta/regions.csv'

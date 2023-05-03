@@ -1,5 +1,6 @@
 import pickle
-import sys
+import pytz
+import json
 
 import datetime as dt
 import pandas as pd
@@ -15,6 +16,8 @@ from modules.feature_engineering import generate_features_dumb, event_holiday_is
 def isNaN(num):
     return num != num
 
+tz = pytz.timezone('Europe/Kyiv')
+
 # Generate predictions file for 12 hours in all regions
 
 def get_yesterday_report(day_str):
@@ -25,11 +28,10 @@ def get_yesterday_report(day_str):
     tfidf_vector = get_report_tfidf_vector(f"./Reports/{date.strftime('%Y-%m-%d')}.html")
     return pd.concat([pd.DataFrame([day_str], columns=['date_tomorrow_datetime']), tfidf_vector], axis=1)
 
-def get_prediction(df, model):
+def get_prediction(df, model, scaler):
     # Generate predictions
 
     # Normalize
-    scaler = pickle.load(open(f'./{MODEL_FOLDER}/{scaler_model}_{scaler_version}.pkl', 'rb'))
     # Separate float values
     df_float_values = df[scaler.get_feature_names_out()]
     if df_float_values.to_numpy().ndim < 2:
@@ -42,12 +44,12 @@ def get_prediction(df, model):
     prediction = model.predict(df_float_values_scaled)
     return prediction
 
-def generate_features_smart(df, model):
+def generate_features_smart(df, model, scaler):
     # Generates features based on model predictions for prevous hours
 
     # Generate dumb features and prediction
     df = generate_features_dumb(df)
-    df['alarm_marker'] = pd.Series(get_prediction(df.copy(), model))
+    df['alarm_marker'] = pd.Series(get_prediction(df.copy(), model, scaler))
 
     # Create new column to account for predicted alarms
     df['event_alarms_past_24_modifier'] = 0
@@ -77,7 +79,7 @@ def generate_features_smart(df, model):
             df.loc[r * hours + h, 'event_simultaneous_alarms'] = marker_sum
             df.loc[r * hours + h, 'event_alarms_past_24'] += df.loc[r * hours + h, 'event_alarms_past_24_modifier']
             # Update prediction with updated features
-            df.loc[r * hours + h, 'alarm_marker'] = get_prediction(df.iloc[r * hours + h].copy(), model)[0]
+            df.loc[r * hours + h, 'alarm_marker'] = get_prediction(df.iloc[r * hours + h].copy(), model, scaler)[0]
 
     df = df.drop(['event_alarms_past_24_modifier', 'was_alarm'], axis=1)
 
@@ -134,15 +136,30 @@ def main():
                                     left_on="day_datetime",
                                     right_on="isw_date_tomorrow_datetime")
 
-    # Load Model
+    # Load model
     model = pickle.load(open(f'./{MODEL_FOLDER}/{model_file_name}.pkl', 'rb'))
+    scaler = pickle.load(open(f'./{MODEL_FOLDER}/{scaler_model}_{scaler_version}.pkl', 'rb'))
+
     # Generate features
-    df = generate_features_smart(df, model)
+    df = generate_features_smart(df, model, scaler)
 
     # Save prediction to .csv
     res = pd.DataFrame()
     res[['date_time', 'region_id', 'alarm_marker']] = df[['date_time', 'region_id_int', 'alarm_marker']].copy()
     res.to_csv(PREDICTIONS_FILE, sep=';')
+
+    # Write metadata
+
+    status = {}
+    try:
+        with open(STATE_FILE, 'r') as handle:
+            status = json.load(handle)
+    except:
+        status = {}
+    with open(STATE_FILE, 'w') as handle:
+        status["last_prediciotn_time"] = str(dt.datetime.now(tz))
+        json.dump(status, handle)
+
 
 if __name__ == '__main__':
     main()

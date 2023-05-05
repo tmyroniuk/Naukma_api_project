@@ -102,7 +102,7 @@ def calc_region_if_alarm_at(region_name: str, states_list: list, date_time):
 def calc_simultaneous_alarms():
     return float(len(load_alerts()))
 
-def generate_features_dumb(df, states = None):
+def generate_features_dumb(df, states = None, generate_current = True):
     # Num of separate alarms in past 24 hours
 
     # Load state regions metadata from alerts API
@@ -112,5 +112,6 @@ def generate_features_dumb(df, states = None):
     reset_cache()
     df[['event_alarms_past_24', 'event_hours_from_last_alarm']] = df.apply(lambda row: calc_region_alarms_history(row['region'], states, row['date_time']), axis=1)
     # Num of state regions with alarms at the moment
-    df['event_simultaneous_alarms'] = calc_simultaneous_alarms()
+    if generate_current:
+        df['event_simultaneous_alarms'] = calc_simultaneous_alarms()
     return df

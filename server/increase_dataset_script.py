@@ -7,10 +7,10 @@ import numpy as np
 
 from dateutil import parser
 
-from server.config import *
-from server.modules.data_collection import save_by_date, load_states
-from server.modules.data_preprocessing import get_report_tfidf_vector, get_weather_forecast_df, get_weather_log_df
-from server.modules.feature_engineering import generate_features_dumb, event_holiday_is_near, calc_region_if_alarm_at
+from config import *
+from modules.data_collection import save_by_date, load_states
+from modules.data_preprocessing import get_report_tfidf_vector, get_weather_forecast_df, get_weather_log_df
+from modules.feature_engineering import generate_features_dumb, event_holiday_is_near, calc_region_if_alarm_at
 
 tz = pytz.timezone('Europe/Kyiv')
 
@@ -77,8 +77,9 @@ def main():
 
     # Generate time-based features
     states = load_states()
-    df = generate_features_dumb(df, states)
+    df = generate_features_dumb(df, states, generate_current=False)
     df['event_indicator'] = df.apply(lambda row: calc_region_if_alarm_at(row['region'], states, row['date_time']), axis=1)
+    df['event_simultaneous_alarms'] = df['event_indicator'].sum()
 
     # Normalize
     scaler = pickle.load(open(f'./{MODEL_FOLDER}/{scaler_model}_{scaler_version}.pkl', 'rb'))

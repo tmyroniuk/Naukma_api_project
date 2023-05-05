@@ -4,5 +4,5 @@
 
 .vs/
 .vscode/
-data/
-Reports/
+/data/
+/Reports/

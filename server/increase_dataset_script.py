@@ -8,9 +8,9 @@ import numpy as np
 from dateutil import parser
 
 from config import *
-from modules.weather_module import save_by_date, get_weather_log_df
+from modules.weather_module import get_weather_log_df
 from modules.alarms_module import generate_features_dumb, event_holiday_is_near, load_states, calc_region_if_alarm_at
-from modules.news_module import get_report_tfidf_vector
+from modules.news_module import get_report_tfidf_vector, save_by_date
 
 tz = pytz.timezone('Europe/Kyiv')
 

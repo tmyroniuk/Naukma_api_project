@@ -77,15 +77,8 @@ dataset['city_id'] = dataset['city'].map(city_dict)
 dataset.drop('city', axis=1, inplace=True)
 
 # Split the dataset into features (X) and target (y)
-min_date = dataset['day_datetime'].min()
-max_date = dataset['day_datetime'].max()
 X = dataset.drop(columns=['target'])
 y = dataset['target']
-
-train_percent = .75
-time_between = max_date - min_date
-train_cutoff = min_date + train_percent*time_between
-
 
 # XGBoost
 from xgboost import XGBClassifier
@@ -98,6 +91,6 @@ xgb_clf = XGBClassifier(min_child_weight=1,
                            random_state=5, 
                            verbosity=3)
 
-xgb_clf.fit(X_train, y_train)
+xgb_clf.fit(X, y)
 
-predict_proba = xgb_clf.predict_proba(X_test)[:, 1]
+# predict_proba = xgb_clf.predict_proba(X)[:, 1]

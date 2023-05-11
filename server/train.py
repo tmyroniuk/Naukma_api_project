@@ -11,7 +11,7 @@ from config import DATASET_FILE, STATE_FILE, MODEL_FOLDER, model_file_name
 tz = pytz.timezone('Europe/Kyiv')
 
 # Load dataset
-dataset = pickle.load(open(f"{DATASET_FILE}.pkl", "rb"))
+dataset = pd.read_pickle(f"{DATASET_FILE}.pkl")
 
 # Sort dataset by date
 dataset['day_datetime'] = pd.to_datetime(dataset['day_datetime'])

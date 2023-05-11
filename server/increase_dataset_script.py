@@ -93,7 +93,6 @@ def main():
     df['city_resolvedAddress'] = df.apply(lambda row: dataset[dataset['region_id'].values == row['region_id']]['city_resolvedAddress'].values[0], axis=1)
     df = df[dataset.columns]
     dataset = pd.concat([dataset, df], axis=0, ignore_index=True)
-    dataset = pickle.load(open(f"{DATASET_FILE}.pkl", "rb"))
 
     # Save dataset
     dataset.to_pickle(DATASET_FILE)

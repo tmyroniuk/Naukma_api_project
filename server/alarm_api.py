@@ -118,6 +118,7 @@ def load_forecast_endpoint():
 
         result_payload = {
             'last_prediciotn_time': status['last_prediciotn_time'],
+            'last_model_train_time': status['last_model_train_time'],
             'regions_forecast': time_forecast
         }
 

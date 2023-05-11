@@ -23,7 +23,7 @@ def get_yesterday_report(day_str):
     return pd.concat([pd.DataFrame([day_str], columns=['date_tomorrow_datetime']), tfidf_vector], axis=1)
 
 def main():
-    dataset = pickle.load(open(f"{DATASET_FILE}.pkl", "rb"))
+    dataset = pd.read_pickle(f"{DATASET_FILE}.pkl")
 
     last_hour = dt.datetime.now(tz).replace(minute=0, second=0, microsecond=0) - dt.timedelta(hours=1)
 

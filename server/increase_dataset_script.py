@@ -96,7 +96,7 @@ def main():
     dataset = pickle.load(open(f"{DATASET_FILE}.pkl", "rb"))
 
     # Save dataset
-    pickle.dump(dataset, open(DATASET_FILE, 'wb'))
+    dataset.to_pickle(DATASET_FILE)
 
 if __name__ == '__main__':
     main()

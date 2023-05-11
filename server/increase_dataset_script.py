@@ -32,7 +32,7 @@ def main():
 
     # Custom made dataset with most "important" russian hollidays
     holiday_df = pd.read_csv(HOLIDAY_DATASET, sep=';')
-    holiday_df['date'] = holiday_df['date'].apply(pd.to_datetime)
+    holiday_df['date'] = holiday_df['date'].apply(lambda date: pd.to_datetime(date, dayfirst=True))
 
     # Dedicated datetime column
     df['date_time'] = df.apply(lambda row: parser.parse(f"{row['day_datetime']}T{row['hour_datetime']}"), axis=1)
